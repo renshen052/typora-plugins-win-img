@@ -4,7 +4,7 @@
         //==============重要说明==============
         //文件上传到哪里，取值有：self/tencent/aliyun
         //self指自建的服务器、tencent指腾讯云的COS、aliyun值的是阿里云OSS
-        target:'self',
+        target:'github',
         
         //target=self 时涉及的配置参数
         self: {
@@ -43,6 +43,30 @@
             SecretKey: 'D4ApnTuIO3caXQhHHM59THysdoCAc7',        // 
             Folder: 'typora',                                   // 可以把上传的图片都放到这个指定的文件夹下
             BucketDomain : 'http://jiebianjia.oss-cn-shenzhen.aliyuncs.com/',
+            
+            policyText: {
+                "expiration": "9021-01-01T12:00:00.000Z", //设置该Policy的失效时间，超过这个失效时间之后，就没有办法通过这个policy上传文件了
+                "conditions": [
+                    ["content-length-range", 0, 524288] // 设置上传文件的大小限制 512kb
+                ]
+            },
+        },
+        //target=github 时涉及的配置参数
+        github : {
+            // 必须参数,提交消息（默认为：add image）
+            message : "add image" ,
+
+            //要提交到的分支（默认为：master）
+            branch : "master",
+
+            //获取token去这里https://github.com/settings/tokens/new ，勾选repo权限就可以
+            //（来源:https://blog.csdn.net/the_power/article/details/103125175）
+            //申请完成后替换（这里这个是错误的）
+            token : 'fc0aa2fbdcfc525930ad50aexxxxxxcxxxxx',        // token ,建议只用有提交权限的（repo
+            userName : 'renshen052',                   //用户名
+            repositorie : 'gitnote-images',            //仓库名
+            Folder : 'typora',                          // 可以把上传的图片都放到这个指定的文件夹下
+            BucketDomain : 'https://api.github.com/repos/',
             
             policyText: {
                 "expiration": "9021-01-01T12:00:00.000Z", //设置该Policy的失效时间，超过这个失效时间之后，就没有办法通过这个policy上传文件了
@@ -148,6 +172,15 @@
         },
         // 上传到阿里云OSS时的初始化方法
         aliyun: function(){
+            $.getScript( "./plugins/image/crypto/crypto/crypto.js", function(){
+                $.getScript( "./plugins/image/crypto/hmac/hmac.js" );
+                $.getScript( "./plugins/image/crypto/sha1/sha1.js" );
+                $.getScript( "./plugins/image/crypto/base64.js" );
+                $.getScript( "./plugins/image/crypto/plupload.full.min.js" );
+            });
+        },
+        // 上传到github仓库时的初始化方法
+        github: function(){
             $.getScript( "./plugins/image/crypto/crypto/crypto.js", function(){
                 $.getScript( "./plugins/image/crypto/hmac/hmac.js" );
                 $.getScript( "./plugins/image/crypto/sha1/sha1.js" );
@@ -272,6 +305,45 @@
                     failureCall('服务响应解析失败，请稍后再试');
                 }
             });
+        },
+        // 使用github仓库存储时，适用的上传方法
+        github: function(fileData, url, successCall, failureCall){
+            
+            var filename = helper.dateFormat((new Date()),'yyyyMMddHHmmss-')+Math.floor(Math.random() * Math.floor(999999))+'.'+helper.extension(fileData);
+            var filepath = setting.github.Folder+'/'+filename;
+            
+            //https://api.github.com/repos/用户名/仓库名/contents/文件路径
+            var target = setting.github.BucketDomain + setting.github.userName;//加用户名
+            target += "/" + setting.github.repositorie; //加仓库名
+            target += "/contents/" + filepath; //加文件路径
+            target += "?access_token=" + setting.github.token;//加认证
+
+            //处理base64编码，github要求文件base64编码，前面不能有 "data:image/png;base64,",这些都要去掉
+            var newFileData = fileData.substring(fileData.indexOf(",")+1); //取得逗号后面的
+
+            var predata = {
+                "message" : setting.github.message,
+                "content" : newFileData,
+                "branch" : setting.github.branch
+            }
+
+            $.ajax({
+                type: "PUT",
+                headers: {
+                    "ContentType" : "application/json",
+                    "X-GitHub-Media-Type" : "github.v3"
+                },
+                url: target,
+                data: JSON.stringify(predata),
+                success: function(result) {
+                    console.log(result);
+                    successCall(result.content.download_url);
+                },
+                error:function(result){
+                    console.log(result);
+                    failureCall('服务响应解析失败，请稍后再试');
+                }
+            });
         }
     };
     
@@ -291,6 +363,9 @@
                         break;
                     case 'aliyun':
                         upload.aliyun(reader.result, url, setting.onSuccess, setting.onFailure);
+                        break;
+                    case 'github':
+                        upload.github(reader.result, url, setting.onSuccess, setting.onFailure);
                         break;
                     default:
                         setting.onFailure('配置错误，不支持的图片上传方式，可选方式：self/tencent/aliyun');
@@ -323,6 +398,9 @@
                 break;
             case 'aliyun':
                 init.aliyun();
+                break;
+            case 'github':
+                init.github();
                 break;
         }
         
