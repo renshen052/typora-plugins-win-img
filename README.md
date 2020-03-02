@@ -1,4 +1,48 @@
-# typora-plugins-win-img
+# 增加了 github和gitee 做图床的支持方式
+
+创建一个公开的仓库做图床，对于个人用户，简单的小量图片上传需求想找个免费的，就比较方便
+
+
+
+## 使用
+
+修改配置
+plugins/image/upload.js
+
+```
+setting.target 图片上传方式
+
+
+setting.github 下
+			token: 'xxx', // token ,建议只用有提交权限的（安全）
+            userName: 'xxxx', //用户名
+            repositorie: 'gitnote-images', //仓库名
+
+
+setting.gitee 下
+			token: 'xxx', // token  
+            userName: 'xxx', //用户名
+            repositorie: 'myNote-img', //仓库名
+
+```
+
+
+
+## 申请token
+
+先登录
+
+* github申请token
+https://github.com/settings/tokens
+
+
+* gitee申请token
+https://gitee.com/profile/personal_access_tokens
+
+
+
+
+# typora-plugins-win-img 原仓库README
 ### 介绍
 
 解决Windows下，typora不支持粘贴自动上传图片到服务的问题。
